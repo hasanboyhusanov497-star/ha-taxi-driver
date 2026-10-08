@@ -824,6 +824,178 @@
 
   });
 
+// ===============================
+// HA TAXI + SUPABASE
+// ===============================
+
+const SUPABASE_URL = "https://elgebypfchqbgypolhkyr.supabase.co";
+
+// Supabase → Settings → API Keys → Publishable key → Copy
+const SUPABASE_KEY = "sb_publishable_Cyn-1p_MWjqjNPSSnCoB1A_knye9MPr";
+
+let haTaxiDriver = null;
+
+// Supabase so'rov
+async function supabaseRequest(path, options = {}) {
+    const response = await fetch(
+        SUPABASE_URL + "/rest/v1/" + path,
+        {
+            ...options,
+            headers: {
+                "apikey": SUPABASE_KEY,
+                "Authorization": "Bearer " + SUPABASE_KEY,
+                "Content-Type": "application/json",
+                "Prefer": "return=representation",
+                ...(options.headers || {})
+            }
+        }
+    );
+
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+    }
+
+    return response.json();
+}
+
+
+// ===============================
+// HAYDOVCHINI TOPISH
+// ===============================
+
+async function loadHATaxiDriver() {
+    try {
+        const data = await supabaseRequest(
+            "drivers?select=*&order=created_at.asc&limit=1"
+        );
+
+        if (data.length > 0) {
+            haTaxiDriver = data[0];
+
+            console.log("🚕 HA TAXI haydovchi:", haTaxiDriver);
+
+            updateDriverStatus(haTaxiDriver.online);
+        } else {
+            console.log("Haydovchi topilmadi");
+        }
+
+    } catch (error) {
+        console.error("Supabase xatosi:", error);
+    }
+}
+
+
+// ===============================
+// ONLINE / OFFLINE
+// ===============================
+
+async function setHATaxiOnline(status) {
+
+    if (!haTaxiDriver) {
+        await loadHATaxiDriver();
+    }
+
+    if (!haTaxiDriver) {
+        alert("Haydovchi topilmadi!");
+        return;
+    }
+
+    try {
+
+        await supabaseRequest(
+            "drivers?id=eq." + haTaxiDriver.id,
+            {
+                method: "PATCH",
+                body: JSON.stringify({
+                    online: status
+                })
+            }
+        );
+
+        haTaxiDriver.online = status;
+
+        updateDriverStatus(status);
+
+        console.log(
+            status
+                ? "🟢 Haydovchi ONLINE"
+                : "🔴 Haydovchi OFFLINE"
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Supabase bilan ulanishda xato!");
+    }
+}
+
+
+// ===============================
+// STATUSNI EKRANGA CHIQARISH
+// ===============================
+
+function updateDriverStatus(status) {
+
+    const statusElements = document.querySelectorAll(
+        "button, .status, [class*='status']"
+    );
+
+    statusElements.forEach(el => {
+
+        const text = el.innerText || "";
+
+        if (
+            text.includes("ISHGA CHIQISH") ||
+            text.includes("ISHDA") ||
+            text.includes("OFFLINE")
+        ) {
+
+            if (status) {
+                el.innerText = "🟢 ISHDA";
+            } else {
+                el.innerText = "🔴 ISHGA CHIQISH";
+            }
+        }
+    });
+
+    document.title = status
+        ? "🟢 HA TAXI — Haydovchi"
+        : "🔴 HA TAXI — Haydovchi";
+}
+
+
+// ===============================
+// ISHGA CHIQISH TUGMASI
+// ===============================
+
+document.addEventListener("click", function(event) {
+
+    const button = event.target.closest("button");
+
+    if (!button) return;
+
+    const text = button.innerText || "";
+
+    if (
+        text.includes("ISHGA CHIQISH") ||
+        text.includes("ISHDA")
+    ) {
+
+        const newStatus =
+            !haTaxiDriver || !haTaxiDriver.online;
+
+        setHATaxiOnline(newStatus);
+    }
+});
+
+
+// ===============================
+// BOSHLASH
+// ===============================
+
+loadHATaxiDriver();
 </script>
 
 </body>
