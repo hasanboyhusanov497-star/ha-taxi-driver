@@ -996,6 +996,176 @@ document.addEventListener("click", function(event) {
 // ===============================
 
 loadHATaxiDriver();
+// ===============================
+// 🚕 HA TAXI — BUYURTMALAR
+// ===============================
+
+let currentOrder = null;
+
+function createOrderBox() {
+    const box = document.createElement("div");
+
+    box.id = "haTaxiOrderBox";
+
+    box.style.cssText = `
+        position: fixed;
+        left: 15px;
+        right: 15px;
+        bottom: 20px;
+        z-index: 9999;
+        background: #151515;
+        color: white;
+        padding: 20px;
+        border-radius: 20px;
+        border: 2px solid #f5c400;
+        box-shadow: 0 10px 40px rgba(0,0,0,.5);
+        display: none;
+        font-family: Arial,sans-serif;
+    `;
+
+    document.body.appendChild(box);
+}
+
+function showOrder(order) {
+    const box = document.getElementById("haTaxiOrderBox");
+
+    if (!box) return;
+
+    currentOrder = order;
+
+    box.innerHTML = `
+        <div style="font-size:24px;font-weight:bold;color:#f5c400">
+            🚕 YANGI BUYURTMA!
+        </div>
+
+        <div style="margin-top:15px;font-size:16px">
+            📍 <b>Qayerdan:</b><br>
+            ${order.from_address || "Manzil ko‘rsatilmagan"}
+        </div>
+
+        <div style="margin-top:10px;font-size:16px">
+            🏁 <b>Qayerga:</b><br>
+            ${order.to_address || "Manzil ko‘rsatilmagan"}
+        </div>
+
+        <div style="margin-top:12px;font-size:20px;color:#f5c400">
+            💰 ${Number(order.price || 0).toLocaleString()} so‘m
+        </div>
+
+        <button
+            onclick="acceptHATaxiOrder()"
+            style="
+                width:100%;
+                margin-top:18px;
+                padding:16px;
+                border:0;
+                border-radius:14px;
+                background:#f5c400;
+                color:#111;
+                font-size:18px;
+                font-weight:bold;
+                cursor:pointer;
+            "
+        >
+            ✅ BUYURTMANI QABUL QILISH
+        </button>
+
+        <button
+            onclick="closeHATaxiOrder()"
+            style="
+                width:100%;
+                margin-top:8px;
+                padding:12px;
+                border:0;
+                border-radius:12px;
+                background:#333;
+                color:white;
+                font-size:15px;
+                cursor:pointer;
+            "
+        >
+            ❌ YOPISH
+        </button>
+    `;
+
+    box.style.display = "block";
+}
+
+function closeHATaxiOrder() {
+    const box = document.getElementById("haTaxiOrderBox");
+
+    if (box) {
+        box.style.display = "none";
+    }
+
+    currentOrder = null;
+}
+
+async function checkHATaxiOrders() {
+
+    if (!haTaxiDriver || !haTaxiDriver.online) {
+        return;
+    }
+
+    try {
+
+        const orders = await supabaseRequest(
+            "orders?select=*&status=eq.pending&order=created_at.desc&limit=1"
+        );
+
+        if (!orders || orders.length === 0) {
+            return;
+        }
+
+        const order = orders[0];
+
+        if (currentOrder && currentOrder.id === order.id) {
+            return;
+        }
+
+        showOrder(order);
+
+    } catch (error) {
+        console.error("Buyurtma olishda xato:", error);
+    }
+}
+
+async function acceptHATaxiOrder() {
+
+    if (!currentOrder || !haTaxiDriver) {
+        return;
+    }
+
+    try {
+
+        await supabaseRequest(
+            "orders?id=eq." + currentOrder.id,
+            {
+                method: "PATCH",
+                body: JSON.stringify({
+                    driver_id: haTaxiDriver.id,
+                    driver_name: haTaxiDriver.name,
+                    status: "accepted",
+                    accepted_at: new Date().toISOString()
+                })
+            }
+        );
+
+        alert("✅ Buyurtma qabul qilindi!");
+
+        closeHATaxiOrder();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("❌ Buyurtmani qabul qilishda xato!");
+    }
+}
+
+createOrderBox();
+
+setInterval(checkHATaxiOrders, 3000);
 </script>
 
 </body>
