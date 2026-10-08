@@ -1166,6 +1166,188 @@ async function acceptHATaxiOrder() {
 createOrderBox();
 
 setInterval(checkHATaxiOrders, 3000);
+// ===============================
+// 🚕 HA TAXI — SAFARNI BOSHLASH
+// ===============================
+
+let activeTrip = null;
+
+function showStartTrip(order) {
+    activeTrip = order;
+
+    const box = document.getElementById("haTaxiOrderBox");
+    if (!box) return;
+
+    box.innerHTML = `
+        <div style="font-size:24px;font-weight:bold;color:#f5c400">
+            🚕 BUYURTMA QABUL QILINDI
+        </div>
+
+        <div style="margin-top:15px;font-size:16px">
+            📍 <b>Qayerdan:</b><br>
+            ${order.from_address || "Manzil"}
+        </div>
+
+        <div style="margin-top:10px;font-size:16px">
+            🏁 <b>Qayerga:</b><br>
+            ${order.to_address || "Manzil"}
+        </div>
+
+        <div style="margin-top:12px;font-size:20px;color:#f5c400">
+            💰 ${Number(order.price || 0).toLocaleString()} so‘m
+        </div>
+
+        <button
+            onclick="startHATaxiTrip()"
+            style="
+                width:100%;
+                margin-top:20px;
+                padding:17px;
+                border:0;
+                border-radius:14px;
+                background:#20d05a;
+                color:white;
+                font-size:19px;
+                font-weight:bold;
+                cursor:pointer;
+            "
+        >
+            🚕 SAFARNI BOSHLASH
+        </button>
+    `;
+
+    box.style.display = "block";
+}
+
+async function startHATaxiTrip() {
+
+    if (!activeTrip) {
+        alert("Faol buyurtma topilmadi!");
+        return;
+    }
+
+    try {
+
+        await supabaseRequest(
+            "orders?id=eq." + activeTrip.id,
+            {
+                method: "PATCH",
+                body: JSON.stringify({
+                    status: "started",
+                    started_at: new Date().toISOString()
+                })
+            }
+        );
+
+        activeTrip.status = "started";
+
+        showFinishTrip();
+
+        alert("🚕 SAFAR BOSHLANDI!");
+
+    } catch (error) {
+
+        console.error(error);
+        alert("❌ Safarni boshlashda xato!");
+    }
+}
+
+function showFinishTrip() {
+
+    const box = document.getElementById("haTaxiOrderBox");
+    if (!box) return;
+
+    box.innerHTML = `
+        <div style="
+            font-size:26px;
+            font-weight:bold;
+            color:#20d05a;
+        ">
+            🟢 SAFAR DAVOM ETMOQDA
+        </div>
+
+        <div style="
+            margin-top:15px;
+            font-size:17px;
+        ">
+            📍 ${activeTrip.from_address || "Boshlanish manzili"}
+        </div>
+
+        <div style="
+            margin-top:10px;
+            font-size:17px;
+        ">
+            🏁 ${activeTrip.to_address || "Manzil"}
+        </div>
+
+        <div style="
+            margin-top:15px;
+            font-size:21px;
+            color:#f5c400;
+        ">
+            💰 ${Number(activeTrip.price || 0).toLocaleString()} so‘m
+        </div>
+
+        <button
+            onclick="finishHATaxiTrip()"
+            style="
+                width:100%;
+                margin-top:22px;
+                padding:17px;
+                border:0;
+                border-radius:14px;
+                background:#f5c400;
+                color:#111;
+                font-size:19px;
+                font-weight:bold;
+                cursor:pointer;
+            "
+        >
+            🏁 SAFARNI YAKUNLASH
+        </button>
+    `;
+
+    box.style.display = "block";
+}
+
+async function finishHATaxiTrip() {
+
+    if (!activeTrip) return;
+
+    try {
+
+        await supabaseRequest(
+            "orders?id=eq." + activeTrip.id,
+            {
+                method: "PATCH",
+                body: JSON.stringify({
+                    status: "completed",
+                    finished_at: new Date().toISOString()
+                })
+            }
+        );
+
+        alert(
+            "🏁 SAFAR YAKUNLANDI!\n\n" +
+            "💰 " +
+            Number(activeTrip.price || 0).toLocaleString() +
+            " so‘m"
+        );
+
+        const box = document.getElementById("haTaxiOrderBox");
+
+        if (box) {
+            box.style.display = "none";
+        }
+
+        activeTrip = null;
+
+    } catch (error) {
+
+        console.error(error);
+        alert("❌ Safarni yakunlashda xato!");
+    }
+}
 </script>
 
 </body>
